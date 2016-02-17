@@ -1,0 +1,90 @@
+//El objetivo de esta script es poder leer un XML iniciando sesión previamente en DRUPAL
+//Su uso está enfocado para exportar registros delicados de un DRUPAL
+//Desarrollamos la función leerXML donde se ejecutarán todos los procesos  
+function leerXML() {
+  //Obtenemos la hoja activa que será donde se pintarán los resultados
+  var sheet = SpreadsheetApp.getActiveSheet();
+  //Obtenemos el Token de sesion para crear la cockie
+  var tokenSesion = obtenerTokenSesionDrupal();
+  //Preparamos la conexión
+  //Preparamos la varilable Headers con la cockie para poder logearnos en Drupal
+  var headers = {"Cookie":tokenSesion.session_name+'='+tokenSesion.sessid,
+                     "X-CSRF-Token":tokenSesion.token
+                  };
+  //Definimos el XML que vamos a atacar
+  var url = 'http://pre-en.camaradesevilla.com/inscripciones.xml';
+  //Definimos los parámetros de conexión necesarios para acceder a Drupal y traernos el XML
+  var options = {
+    'method': 'get',
+    'headers': headers,
+    'contentType': 'application/xml'
+  };
+  //Hacemos la llamada al Fecth
+  //**Futuras versiones: Controlar lo que nos devuelve esta función
+  var response = UrlFetchApp.fetch(url, options);
+  
+  //Parsear XML en GAS
+  //1º obtenemos el text del resultado del Fetch
+  var xml = response.getContentText();
+  //2º parseamos con Xmlservice el texto
+  var document = XmlService.parse(xml);
+  //3º obtenemos las diferentes entradas por la divición que sea, en nuestro caso: inscripcion
+  var entries = document.getRootElement().getChildren('inscripcion');
+  //4º recorremos todas las entradas
+  for (var i = 0; i < entries.length; i++) {
+  //5º obtenemos los diferentes parámetros de cada entrada (un único salto en este ejemplo,
+    //sería igual con dos o más saltos)
+    var curso = entries[i].getChild('Curso').getText();
+    //en esta variale localizo el número de la fila a pintar (i empieza en 0)
+    var y = i+1;
+    //Actualizo el valor de la celda
+    var actcelda1 = sheet.getRange('A'+y).setValue(curso);
+  }
+   
+}
+
+function obtenerTokenSesionDrupal(){
+  //Preparamos conexión con Drupal
+      //1º Obtenemos el token de sesion
+      var url = 'http://pre-en.camaradesevilla.com/services/session/token';
+      var token1 = UrlFetchApp.fetch(url);
+      
+      //Ejecución del proceso de conexión con el webservice de Drupal
+      //2º obtenemos el token de login
+      
+      var login = 'http://pre-en.camaradesevilla.com/actualiza_curso/user/login';
+
+      //Obtenemos el usuario y la contraseña desde nuestro archivo de origen
+      //Obtenemos el documento
+      var docPass = DocumentApp.openById('1OeQ2MIgqurTNwTuFvEV-oEPrbUQDircB_d5qdYa0GL0');
+      //Accedemos a su contenido
+      var body = docPass.getBody();
+      //Tomamos el primer parrafo como user
+      var username = body.getParagraphs()[0].getText();
+      //Tomamos el primer parrafo como pass
+      var passname = body.getParagraphs()[1].getText();
+  
+      //Usuario y contraseña de conexión a nuestra web, con permisos
+      var payload = {"username":username,"password":passname}
+      //Configuramos la URL de ataque de nuestro POST
+      var url2 = 'http://pre-en.camaradesevilla.com/actualiza_curso/user/login'     
+      //En el campo Payload del POST debemos poner un valor JSON
+      var payok = JSON.stringify(payload);
+      //Definimos los parámetros necesarios para hacer la consulta
+      var parametros = {
+        "method": "POST",
+        "X-CSRF-Token":token1,
+        "contentType": "application/json",
+        "payload": payok
+      };
+      //Realizamos la consulta con nuestros parámetros
+      var token2 = UrlFetchApp.fetch(url2, parametros);
+      
+      //Así es como debemos parsear un JSON en GAS
+      //Convertimos la respuesta en texto
+      var json = token2.getContentText();
+      //Parseamos el JSON a texto
+      var data = JSON.parse(json);
+      //Devolvemos el Parseo del JSON ya que todos los campos serán necesarios para crear las cookies
+      return data;
+}
