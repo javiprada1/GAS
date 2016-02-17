@@ -1,0 +1,165 @@
+//Este archivo es usado en el proyecto de EN para poder editar desde una Spreadsheet de Google
+//algunos campos importantes de los cursos de EN.
+
+//Creamos la función que al abrir el documento
+//Cree el menú en la parte superior de la hoja de cálculo de Google (Spreadsheet)
+function onOpen() {
+  var ui = SpreadsheetApp.getUi();
+  // Or DocumentApp or FormApp. -> Creamos el menu con submenu
+  ui.createMenu('Actualizar web')
+      .addItem('Actualizar ahora', 'menuItem1')
+      .addToUi();
+}
+
+//Desarrollamos la función que recorra los valores de la Spreasheet a actualizar
+//Y actualice su contenido
+function menuItem1() {
+  //Selecionamos al hoja activa
+  var sheet = SpreadsheetApp.getActiveSheet();
+  //Indicamos el rago de actuación 
+  var data = sheet.getRange('A2:G3').getValues();  
+  //Obtenemos el token de sesion
+  var tokenSesion = obtenerTokenSesionDrupal();
+  
+  for (var i = 0; i < data.length; i++) {
+    //Verificamos si tenemos que actualizar o no esta fila.
+    if(data[i][0] == 'NO'){
+      //En este caso ignoramos la fila completa
+      Logger.log('No actualiza la fila: ' + i);
+    }else{
+      
+      /*
+      //Recorremos toda la fila y vamos mostrando en el log los resultados (Ctrl + Enter para acceder al registro)
+      //Usaremos Logger.log(STRING) para pintar en el registro
+      //Podemos usar un mensaje de caja (tipo alert) con GAS usando: Browser.msgBox(String);
+      Logger.log('Actualiza la fila: ' + i);
+      Logger.log('Para la fila: ' + i);
+      Logger.log('¿Actualiza?: ' + data[i][0]);
+      Logger.log('Curso ID: ' + data[i][1]);
+      Logger.log('Área: ' + data[i][2]);
+      Logger.log('Curso: ' + data[i][3]);
+      Logger.log('Duración: ' + data[i][4]);
+      Logger.log('Precio: ' + data[i][5]);
+      Logger.log('Fecha Inicio: ' + data[i][6]);
+      Logger.log('Fecha actualización: ' + data[i][7]);
+      Logger.log('Fila: '+ i2 +' Columna: 7');
+      */
+      //En la variable i2 tenemos la fila a actualizar
+      var i2 = i+2;
+      //Declaración de variables
+      var cursoID = data[i][1];
+      var area = data[i][2];
+      var curso = data[i][3];
+      var duracion = data[i][4];
+      var precio = data[i][5];
+      var fecinicio = data[i][6];
+      
+      //Trabajamos con la fecha de inicio para ponerlo en formato 'yyyy-MM-dd hh:mm:ss'
+      var dia = fecinicio.getDate();
+      var mes = fecinicio.getMonth()+1;//Enero es el 0
+      var anyo = fecinicio.getFullYear();
+      var d1 = anyo+'-'+mes+'-'+dia;
+      
+      /*
+      //Comentarios de revisión de estado
+      Logger.log('Fecha: ' + d1);
+      Logger.log('Actualiza la fila: ' + i);
+      */
+      
+      //3º Hacemos el PUT
+      //Para hacer el PUT (o la actualización de la entidad) vamos a necesitar URL, los headers (con las cookies de sesion en formato JS) y 
+      //payload (en formato JSON). Con todo esto podremos hacer el PUT
+      
+      //Fijamos la URL a atacar
+      var put = 'http://pre-en.camaradesevilla.com/actualiza_curso/crm_core_contact/'+cursoID+'.json';
+      //Logger.log('URL PUT: ' + put);
+      
+      //Cargamos el put con los datos de la hoja
+      var payload = {"contact_id":cursoID,"type":"Curso","default_revision":"1",
+                    "field_horas":{"und":[{"value":duracion}]},
+                     "field_precio":{"und":[{"value":precio}]},
+                     "field_fecha_de_inicio":{"und":[{"value":d1,"timezone": "Europe/Madrid", "timezone_db": "UTC", "date_type": "datetime"}]}
+                    }
+      //En el campo Payload del PUT debemos poner un valor JSON
+      var payok = JSON.stringify(payload);
+      
+      //Con el Token conseguido en la función obtenerTokenSesionDrupal()
+      //Creamos las cookies necesarias para iniciar sesión en nuestro Drupal
+      var headers = {"Cookie":tokenSesion.session_name+'='+tokenSesion.sessid,
+                     "X-CSRF-Token":tokenSesion.token
+                  };
+    
+      //Preparamos los parámetros que le pasaremos a la llamada UrlFetchApp.fetch de forma correcta
+      var parametros = {
+        "method": "PUT",
+        "headers": headers,
+        "contentType": "application/json",
+        "payload": payok
+      };
+      
+      //Ejecutamos el PUT, este método devuelve una respuesta httpresponse
+      //**Futuras versiones: Controlar lo que nos devuelve esta función
+      //Guia: https://developers.google.com/apps-script/reference/url-fetch/url-fetch-app
+      var put2 = UrlFetchApp.fetch(put, parametros);
+
+      //Registros de auditoria
+      //Editamos la fecha de actualización
+      //Obtenemos primero la fecha a insertar
+      var fecha = Utilities.formatDate(new Date(), "GMT+1", "dd-MM-yyyy HH:mm:ss");
+      //Actualizamos el valor de la celda
+      var actfecha = sheet.getRange(i2, 8).setValue(fecha);
+      //Modificar la Actualización a NO para dejar la fila como estaba
+      var noAct = sheet.getRange(i2, 1).setValue('NO');
+      
+    }
+  }
+     //Lanzamos un aviso estándar de actualización realizada.
+     //++Futuras versiones: Personalizar el aviso
+  Browser.msgBox('Se han actualizado correctamente los cursos.');
+}
+
+function obtenerTokenSesionDrupal(){
+  //Preparamos conexión con Drupal
+      //1º Obtenemos el token de sesion
+      var url = 'http://pre-en.camaradesevilla.com/services/session/token';
+      var token1 = UrlFetchApp.fetch(url);
+      
+      //Ejecución del proceso de conexión con el webservice de Drupal
+      //2º obtenemos el token de login
+      
+      var login = 'http://pre-en.camaradesevilla.com/actualiza_curso/user/login';
+
+      //Obtenemos el usuario y la contraseña desde nuestro archivo de origen
+      //Obtenemos el documento
+      var docPass = DocumentApp.openById('1OeQ2MIgqurTNwTuFvEV-oEPrbUQDircB_d5qdYa0GL0');
+      //Accedemos a su contenido
+      var body = docPass.getBody();
+      //Tomamos el primer parrafo como user
+      var username = body.getParagraphs()[0].getText();
+      //Tomamos el primer parrafo como pass
+      var passname = body.getParagraphs()[1].getText();
+  
+      //Usuario y contraseña de conexión a nuestra web, con permisos
+      var payload = {"username":username,"password":passname}
+      //Configuramos la URL de ataque de nuestro POST
+      var url2 = 'http://pre-en.camaradesevilla.com/actualiza_curso/user/login'     
+      //En el campo Payload del POST debemos poner un valor JSON
+      var payok = JSON.stringify(payload);
+      //Definimos los parámetros necesarios para hacer la consulta
+      var parametros = {
+        "method": "POST",
+        "X-CSRF-Token":token1,
+        "contentType": "application/json",
+        "payload": payok
+      };
+      //Realizamos la consulta con nuestros parámetros
+      var token2 = UrlFetchApp.fetch(url2, parametros);
+      
+      //Así es como debemos parsear un JSON en GAS
+      //Convertimos la respuesta en texto
+      var json = token2.getContentText();
+      //Parseamos el JSON a texto
+      var data = JSON.parse(json);
+      //Devolvemos el Parseo del JSON ya que todos los campos serán necesarios para crear las cookies
+      return data;
+}
