@@ -1,6 +1,5 @@
 //Este archivo es usado en el proyecto de EN para poder editar desde una Spreadsheet de Google
 //algunos campos importantes de los cursos de EN.
-
 //Creamos la función que al abrir el documento
 //Cree el menú en la parte superior de la hoja de cálculo de Google (Spreadsheet)
 function onOpen() {
@@ -17,7 +16,7 @@ function menuItem1() {
   //Selecionamos al hoja activa
   var sheet = SpreadsheetApp.getActiveSheet();
   //Indicamos el rago de actuación 
-  var data = sheet.getRange('A2:G3').getValues();  
+  var data = sheet.getRange('A2:I126').getValues();  
   //Obtenemos el token de sesion
   var tokenSesion = obtenerTokenSesionDrupal();
   
@@ -25,7 +24,6 @@ function menuItem1() {
     //Verificamos si tenemos que actualizar o no esta fila.
     if(data[i][0] == 'NO'){
       //En este caso ignoramos la fila completa
-      Logger.log('No actualiza la fila: ' + i);
     }else{
       
       /*
@@ -53,6 +51,12 @@ function menuItem1() {
       var duracion = data[i][4];
       var precio = data[i][5];
       var fecinicio = data[i][6];
+      var fecfin = data[i][7];
+      var estado = data[i][8];
+      Logger.log('Accedemos sin problemas estado: '+estado);
+      //trabajamos el valor del estado (taxonomia)
+      var tid = parseaEstadoToTid(estado);
+      Logger.log('tid: '+tid);
       
       //Trabajamos con la fecha de inicio para ponerlo en formato 'yyyy-MM-dd hh:mm:ss'
       var dia = fecinicio.getDate();
@@ -60,11 +64,11 @@ function menuItem1() {
       var anyo = fecinicio.getFullYear();
       var d1 = anyo+'-'+mes+'-'+dia;
       
-      /*
-      //Comentarios de revisión de estado
-      Logger.log('Fecha: ' + d1);
-      Logger.log('Actualiza la fila: ' + i);
-      */
+      //Trabajamos con la fecha de inicio para ponerlo en formato 'yyyy-MM-dd hh:mm:ss'
+      var dia2 = fecfin.getDate();
+      var mes2 = fecfin.getMonth()+1;//Enero es el 0
+      var anyo2 = fecfin.getFullYear();
+      var d2 = anyo2+'-'+mes2+'-'+dia2;
       
       //3º Hacemos el PUT
       //Para hacer el PUT (o la actualización de la entidad) vamos a necesitar URL, los headers (con las cookies de sesion en formato JS) y 
@@ -76,9 +80,13 @@ function menuItem1() {
       
       //Cargamos el put con los datos de la hoja
       var payload = {"contact_id":cursoID,"type":"Curso","default_revision":"1",
+                     "contact_name":{"und":[{"family":curso,
+                        "safe":{"family":curso}}]},
                     "field_horas":{"und":[{"value":duracion}]},
                      "field_precio":{"und":[{"value":precio}]},
-                     "field_fecha_de_inicio":{"und":[{"value":d1,"timezone": "Europe/Madrid", "timezone_db": "UTC", "date_type": "datetime"}]}
+                     "field_fecha_de_inicio":{"und":[{"value":d1,"timezone": "Europe/Madrid", "timezone_db": "UTC", "date_type": "datetime"}]},
+                     "field_fecha_fin":{"und":[{"value":d2,"timezone": "Europe/Madrid", "timezone_db": "UTC", "date_type": "datetime"}]},
+                     "field_estado":{"und":[{"tid":tid}]}
                     }
       //En el campo Payload del PUT debemos poner un valor JSON
       var payok = JSON.stringify(payload);
@@ -107,7 +115,7 @@ function menuItem1() {
       //Obtenemos primero la fecha a insertar
       var fecha = Utilities.formatDate(new Date(), "GMT+1", "dd-MM-yyyy HH:mm:ss");
       //Actualizamos el valor de la celda
-      var actfecha = sheet.getRange(i2, 8).setValue(fecha);
+      var actfecha = sheet.getRange(i2, 10).setValue(fecha);
       //Modificar la Actualización a NO para dejar la fila como estaba
       var noAct = sheet.getRange(i2, 1).setValue('NO');
       
@@ -162,4 +170,28 @@ function obtenerTokenSesionDrupal(){
       var data = JSON.parse(json);
       //Devolvemos el Parseo del JSON ya que todos los campos serán necesarios para crear las cookies
       return data;
+}
+
+//Funciones para parsear una taxonomía
+function parseaEstadoToTid(estado){
+  /*
+  APLAZADO = 4
+  COMENZADO = 2
+  FINALIZADO = 3
+  SUSPENDIDO = 5
+  ABIERTO = 1
+  */
+  var devolver = 5;
+    if(estado=='ABIERTO'){
+    devolver = 1;
+  }else if(estado=='COMENZADO'){
+    devolver = 2;
+  }else if(estado=='FINALIZADO'){
+    devolver = 3;
+  }else if(estado=='APLAZADO'){
+    devolver = 4;
+  }else if(estado=='SUSPENDIDO'){
+    devolver = 5;
+  }
+  return devolver;
 }
