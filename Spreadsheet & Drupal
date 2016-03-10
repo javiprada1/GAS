@@ -1,0 +1,157 @@
+//Este archivo es usado en el proyecto de EN para poder editar desde una Spreadsheet de Google
+//algunos campos importantes de los cursos de EN.
+//Creamos la función que al abrir el documento
+//Cree el menú en la parte superior de la hoja de cálculo de Google (Spreadsheet)
+function onOpen() {
+  var ui = SpreadsheetApp.getUi();
+  // Or DocumentApp or FormApp. -> Creamos el menu con submenu
+  ui.createMenu('Actualizar web')
+      .addItem('Actualizar ahora', 'menuItem1')
+      .addToUi();
+}
+
+//Desarrollamos la función que recorra los valores de la Spreasheet a actualizar
+//Y actualice su contenido
+function menuItem1() {
+  //Selecionamos al hoja activa
+  var sheet = SpreadsheetApp.getActiveSheet();
+  //Indicamos el rago de actuación 
+  var data = sheet.getRange('A2:F8').getValues();  
+  //Obtenemos el token de sesion
+  var tokenSesion = obtenerTokenSesionDrupal();
+  
+  
+  
+  
+  
+  for (var i = 0; i < data.length; i++) {
+    //Verificamos si tenemos que actualizar o no esta fila.
+    if(data[i][0] == 'NO'){
+      //En este caso ignoramos la fila completa
+    }else{
+      /*
+      //Recorremos toda la fila y vamos mostrando en el log los resultados (Ctrl + Enter para acceder al registro)
+      //Usaremos Logger.log(STRING) para pintar en el registro
+      //Podemos usar un mensaje de caja (tipo alert) con GAS usando: Browser.msgBox(String);
+      */
+      //En la variable i2 tenemos la fila a actualizar
+      var i2 = i+2;
+      //Declaración de variables
+      var cocheID = data[i][1];
+      var nombre = data[i][2];
+      var precio = data[i][3];
+      var marca = data[i][4];
+      var estado = data[i][5];
+      
+      Logger.log('Accedemos sin problemas estado: '+estado);
+      //trabajamos el valor del estado (taxonomia)
+      var estadotid = parseaEstadoToTid(estado);
+      Logger.log('Estado: '+estadotid);
+      
+      //3º Hacemos el PUT
+      //Para hacer el PUT (o la actualización de la entidad) vamos a necesitar URL, los headers (con las cookies de sesion en formato JS) y 
+      //payload (en formato JSON). Con todo esto podremos hacer el PUT
+      
+      //Fijamos la URL a atacar
+      var put = 'http://aprendiendodrupal.com/actualiza_coche/node/'+cocheID+'.json';
+      Logger.log('URL PUT: ' + put);
+      
+      //Cargamos el put con los datos de la hoja
+      var payload = {"nid":cocheID,"type":"coche","revision_uid":"1",
+                     "field_precio":{"und":[{"value":precio}]},
+                     "title_field":{"es":[{"value":nombre,"format":null,"safe_value":nombre}]}
+                    }
+      //En el campo Payload del PUT debemos poner un valor JSON
+      var payok = JSON.stringify(payload);
+      
+      //Con el Token conseguido en la función obtenerTokenSesionDrupal()
+      //Creamos las cookies necesarias para iniciar sesión en nuestro Drupal
+      var headers = {"Cookie":tokenSesion.session_name+'='+tokenSesion.sessid,
+                     "X-CSRF-Token":tokenSesion.token
+                  };
+    
+      //Preparamos los parámetros que le pasaremos a la llamada UrlFetchApp.fetch de forma correcta
+      var parametros = {
+        "method": "PUT",
+        "headers": headers,
+        "contentType": "application/json",
+        "payload": payok
+      };
+      
+      //Ejecutamos el PUT, este método devuelve una respuesta httpresponse
+      //**Futuras versiones: Controlar lo que nos devuelve esta función
+      //Guia: https://developers.google.com/apps-script/reference/url-fetch/url-fetch-app
+      var put2 = UrlFetchApp.fetch(put, parametros);
+
+      //Registros de auditoria
+      //Editamos la fecha de actualización
+      //Obtenemos primero la fecha a insertar
+      var fecha = Utilities.formatDate(new Date(), "GMT+1", "dd-MM-yyyy HH:mm:ss");
+      //Actualizamos el valor de la celda
+      var actfecha = sheet.getRange(i2, 7).setValue(fecha);
+      //Modificar la Actualización a NO para dejar la fila como estaba
+      var noAct = sheet.getRange(i2, 1).setValue('NO');
+      
+    }
+  }
+     //Lanzamos un aviso estándar de actualización realizada.
+     //++Futuras versiones: Personalizar el aviso
+  Browser.msgBox('Se han actualizado correctamente los coches.');
+}
+
+function obtenerTokenSesionDrupal(){
+  //Preparamos conexión con Drupal
+      //1º Obtenemos el token de sesion
+      var url = 'http://aprendiendodrupal.com/services/session/token';
+      var token1 = UrlFetchApp.fetch(url);
+      
+      //Ejecución del proceso de conexión con el webservice de Drupal
+      //2º obtenemos el token de login
+      
+      var login = 'http://aprendiendodrupal.com/actualiza_coche/user/login';
+
+  
+      //Usuario y contraseña de conexión a nuestra web, con permisos
+      var payload = {"username":"pruebas","password":"pruebas2016"}
+      //Configuramos la URL de ataque de nuestro POST
+      var url2 = 'http://aprendiendodrupal.com/actualiza_coche/user/login'     
+      //En el campo Payload del POST debemos poner un valor JSON
+      var payok = JSON.stringify(payload);
+      //Definimos los parámetros necesarios para hacer la consulta
+      var parametros = {
+        "method": "POST",
+        "X-CSRF-Token":token1,
+        "contentType": "application/json",
+        "payload": payok
+      };
+      //Realizamos la consulta con nuestros parámetros
+      var token2 = UrlFetchApp.fetch(url2, parametros);
+      
+      //Así es como debemos parsear un JSON en GAS
+      //Convertimos la respuesta en texto
+      var json = token2.getContentText();
+  
+      //Parseamos el JSON a texto
+      var data = JSON.parse(json);
+      //Devolvemos el Parseo del JSON ya que todos los campos serán necesarios para crear las cookies
+      
+      return data;
+}
+
+//Funciones para parsear una taxonomía
+function parseaEstadoToTid(estado){
+  /*
+  En venta = 49
+  Reservado = 50
+  Vendido = 51
+  */
+  var devolver = 49;
+    if(estado=='En venta'){
+    devolver = 51;
+  }else if(estado=='Reservado'){
+    devolver = 48;
+  }else if(estado=='Vendido'){
+    devolver = 51;
+  }
+  return devolver;
+}
