@@ -1,9 +1,19 @@
+//Cree el menú en la parte superior de la hoja de cálculo de Google (Spreadsheet)
+function onOpen() {
+  var ui = SpreadsheetApp.getUi();
+  // Or DocumentApp or FormApp. -> Creamos el menu con submenu
+  ui.createMenu('Actualizar datos')
+      .addItem('Actualizar datos ahora', 'leerXML')
+      .addToUi();
+}
 //El objetivo de esta script es poder leer un XML iniciando sesión previamente en DRUPAL
 //Su uso está enfocado para exportar registros delicados de un DRUPAL
 //Desarrollamos la función leerXML donde se ejecutarán todos los procesos  
 function leerXML() {
   //Obtenemos la hoja activa que será donde se pintarán los resultados
-  var sheet = SpreadsheetApp.getActiveSheet();
+  var sh = SpreadsheetApp.openById("1WIkY_eiWGRzzAGihsqOajE43ZcWiYhKfIA85BdosJhQ");
+  var sheet = sh.getSheetByName("origen");
+  sheet.clear();
   //Obtenemos el Token de sesion para crear la cockie
   var tokenSesion = obtenerTokenSesionDrupal();
   //Preparamos la conexión
@@ -12,7 +22,7 @@ function leerXML() {
                      "X-CSRF-Token":tokenSesion.token
                   };
   //Definimos el XML que vamos a atacar
-  var url = 'http://pre-en.camaradesevilla.com/inscripciones.xml';
+  var url = 'http://en.camaradesevilla.com/vista-import.xml';
   //Definimos los parámetros de conexión necesarios para acceder a Drupal y traernos el XML
   var options = {
     'method': 'get',
@@ -29,30 +39,41 @@ function leerXML() {
   //2º parseamos con Xmlservice el texto
   var document = XmlService.parse(xml);
   //3º obtenemos las diferentes entradas por la divición que sea, en nuestro caso: inscripcion
-  var entries = document.getRootElement().getChildren('inscripcion');
+  var entries = document.getRootElement().getChildren('crm_core_contact');
   //4º recorremos todas las entradas
+  
   for (var i = 0; i < entries.length; i++) {
   //5º obtenemos los diferentes parámetros de cada entrada (un único salto en este ejemplo,
     //sería igual con dos o más saltos)
+    var id = entries[i].getChild('cid').getText();
     var curso = entries[i].getChild('Curso').getText();
+    var estado = entries[i].getChild('Estado-Inscripci-n').getText();
+    var fecha = entries[i].getChild('Fecha-de-inscripci-n').getText();
     //en esta variale localizo el número de la fila a pintar (i empieza en 0)
     var y = i+1;
     //Actualizo el valor de la celda
-    var actcelda1 = sheet.getRange('A'+y).setValue(curso);
+    var actcelda1 = sheet.getRange('A'+y).setValue(id);
+    var actcelda2 = sheet.getRange('B'+y).setValue(curso);
+    var actcelda3 = sheet.getRange('C'+y).setValue(estado);
+    var actcelda4 = sheet.getRange('D'+y).setValue(fecha);
   }
-   
+  //Obtenemos primero la fecha a insertar
+      var fecha = Utilities.formatDate(new Date(), "GMT+1", "dd-MM-yyyy HH:mm:ss");
+      //Actualizamos el valor de la celda
+      var actfecha = sheet.getRange(2, 9).setValue(fecha);
+  Browser.msgBox('Se han actualizado correctamente los datos del informe.'); 
 }
 
 function obtenerTokenSesionDrupal(){
   //Preparamos conexión con Drupal
       //1º Obtenemos el token de sesion
-      var url = 'http://pre-en.camaradesevilla.com/services/session/token';
+      var url = 'http://en.camaradesevilla.com/services/session/token';
       var token1 = UrlFetchApp.fetch(url);
       
       //Ejecución del proceso de conexión con el webservice de Drupal
       //2º obtenemos el token de login
       
-      var login = 'http://pre-en.camaradesevilla.com/actualiza_curso/user/login';
+      var login = 'http://en.camaradesevilla.com/actualiza_curso/user/login';
 
       //Obtenemos el usuario y la contraseña desde nuestro archivo de origen
       //Obtenemos el documento
@@ -67,7 +88,7 @@ function obtenerTokenSesionDrupal(){
       //Usuario y contraseña de conexión a nuestra web, con permisos
       var payload = {"username":username,"password":passname}
       //Configuramos la URL de ataque de nuestro POST
-      var url2 = 'http://pre-en.camaradesevilla.com/actualiza_curso/user/login'     
+      var url2 = 'http://en.camaradesevilla.com/actualiza_curso/user/login'     
       //En el campo Payload del POST debemos poner un valor JSON
       var payok = JSON.stringify(payload);
       //Definimos los parámetros necesarios para hacer la consulta
