@@ -1,0 +1,53 @@
+//Aplicación para integrar Calendar con SpreadSheet
+function onOpen() {
+  var ui = SpreadsheetApp.getUi();
+  // Or DocumentApp or FormApp. -> Creamos el menu con submenu
+  ui.createMenu('Actualizar datos')
+      .addItem('Actualizar datos ahora', 'menuItem1')
+      .addToUi();
+}
+
+function menuItem1() {
+  //Accedemos a la spreadsheet
+  var sheet = SpreadsheetApp.getActiveSheet();
+  
+ //Accedemos al calendario vía ID
+  var calendar = CalendarApp.getCalendarById("eusa.es_b0ola7sol9qlcdkijahjgo030k@group.calendar.google.com");
+ Logger.log('Found %s matching calendars.', calendar.getName());
+  
+  //Leemos todas las entradas del calendario
+  var fini = new Date('3/17/2016 20:00:00 UTC+1');
+  var ffin = new Date('3/20/2016 20:00:00 UTC+1');
+  var eventos = calendar.getEvents(fini, ffin);
+  Logger.log("Los eventos: "+eventos);
+  
+  //Pintamos todas las entradas del calendario
+   for (var i = 0; i < eventos.length; i++) {
+     var evento = eventos[i];
+     Logger.log(evento.getTitle());
+     var i2 = i+2;
+     var titulo = evento.getTitle();
+     var fecha = evento.getEndTime();
+     var acttitle = sheet.getRange(i2, 1).setValue(titulo);
+     var actfecha = sheet.getRange(i2, 2).setValue(fecha);
+     if(titulo=="Pruebas Innovación 3"){
+       sheet.getRange(i2, 1).setBackground("blue");
+     }else if(titulo=="Pruebas Innovación 2"){
+       sheet.getRange(i2, 1).setBackground("green");
+     }else{
+       sheet.getRange(i2, 1).setBackground("red"); 
+     }
+   }
+  
+  /*
+  //Creamos un evento de pruebas
+  var event = calendar.createEvent('Pruebas Innovación 2',
+     new Date('March 18, 2016 20:00:00 UTC+1'),
+     new Date('March 18, 2016 21:00:00 UTC+1'));
+ Logger.log('Event ID: ' + event.getId());
+ 
+  //Para obetener un evento dado un ID
+  var event = calendar.getEventSeriesById("i2dvdtt1ifjimcm2mi4n57pi3s@google.com");
+  Logger.log(event.getTitle());
+  */
+}
