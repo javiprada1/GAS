@@ -1,0 +1,19 @@
+//Este archivo es usado para poder copiar el contenido de una hoja a otra de Google
+//Creamos la función que al abrir el documento
+//Cree el menú en la parte superior de la hoja de cálculo de Google (Spreadsheet)
+function onOpen() {
+  var ui = SpreadsheetApp.getUi();
+  // Or DocumentApp or FormApp. -> Creamos el menu con submenu
+  ui.createMenu('Opciones avanzadas')
+      .addItem('Copiar contenido en una nueva hoja', 'menuItem1')
+      .addToUi();
+}
+
+function menuItem1() {
+  //Selecionamos al hoja SHEET1
+ var ss = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('SHEET1');
+  //Selecionamos al hoja SHEET2
+   var ss1 = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('SHEET2');  
+   //Programamos la copia del contenido de una hoja a otra
+   ss.getRange('A1:E5000').copyTo(ss1.getRange('A1:E5000'), {contentsOnly:true})
+}
