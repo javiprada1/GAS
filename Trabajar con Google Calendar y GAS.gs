@@ -17,7 +17,7 @@ function menuItem1() {
      var acthoraini = sheet.getRange(1, 3).setValue('Inicio');
      var acthoraini = sheet.getRange(1, 4).setValue('Fin');
   //Accedemos al calendario vía ID
-  var calendar = CalendarApp.getCalendarById('eusa.es_vvdusvh5tcc8bb7ib5rfbl2g1s@group.calendar.google.com');
+  var calendar = CalendarApp.getCalendarById('ID-DEL-CALENDARIO-SE-OBIENTE-DESDE-COMPARTIR-CALENDARIO');
   //Leemos todas las entradas del calendario desde esta fecha de inicio
   var fini = new Date('10/17/2016 20:00:00 UTC+1');
   //hasta esta fecha fin
